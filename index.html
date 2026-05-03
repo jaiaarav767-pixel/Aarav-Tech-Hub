@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Lectures | Smart Learning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: white; font-family: 'Inter', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .video-card:hover { transform: translateY(-5px); transition: 0.3s; border-color: #6366f1; }
+        iframe { border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+    </style>
+</head>
+<body class="pb-10">
+
+    <nav class="p-6 flex justify-between items-center glass sticky top-0 z-50">
+        <h1 class="text-xl font-black tracking-tighter italic text-indigo-400">LECTURE<span class="text-white">PRO</span></h1>
+        <button onclick="window.history.back()" class="bg-slate-800 px-4 py-2 rounded-full text-xs font-bold border border-slate-700">BACK</button>
+    </nav>
+
+    <div id="player-section" class="hidden container mx-auto p-4 lg:p-10">
+        <div class="max-w-4xl mx-auto">
+            <div class="relative pt-[56.25%] mb-6">
+                <iframe id="video-frame" class="absolute top-0 left-0 w-full h-full" src="" allow="autoplay" allowfullscreen></iframe>
+            </div>
+            <h2 id="playing-title" class="text-xl font-bold mb-2 text-indigo-300">Select a lecture to start</h2>
+            <p class="text-slate-400 text-sm">Note: If video doesn't load, make sure you're logged in with your student ID.</p>
+            <hr class="my-6 border-slate-800">
+        </div>
+    </div>
+
+    <div class="container mx-auto p-6">
+        <div class="flex items-center gap-2 mb-6">
+            <div class="h-8 w-1 bg-indigo-500 rounded-full"></div>
+            <h3 class="text-lg font-bold">ALL LECTURES</h3>
+        </div>
+        
+        <div id="lecture-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="animate-pulse glass p-10 rounded-2xl text-center">Loading Lectures...</div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // 🔥 APNI FIREBASE CONFIG YAHAN DALO (Same as your main app)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Function to Play Video
+        window.playVideo = (link, title) => {
+            let secureUrl = link.replace('/view', '/preview').replace('?usp=sharing', '');
+            if (!secureUrl.includes('/preview')) {
+                let id = link.split('/d/')[1]?.split('/')[0];
+                secureUrl = `https://drive.google.com/file/d/${id}/preview`;
+            }
+            
+            document.getElementById("video-frame").src = secureUrl;
+            document.getElementById("playing-title").innerText = title;
+            document.getElementById("player-section").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        // Load Lectures from Firestore
+        onSnapshot(collection(db, "lectures"), (snap) => {
+            const grid = document.getElementById("lecture-grid");
+            grid.innerHTML = "";
+            
+            snap.forEach(doc => {
+                const lec = doc.data();
+                grid.innerHTML += `
+                    <div onclick="playVideo('${lec.link}', '${lec.title}')" class="video-card glass p-4 rounded-2xl cursor-pointer border border-transparent">
+                        <div class="bg-indigo-900/30 h-32 rounded-xl flex items-center justify-center mb-4 border border-indigo-500/20">
+                            <i class="fa-solid fa-play text-3xl text-indigo-400"></i>
+                        </div>
+                        <h4 class="font-bold text-sm mb-1">${lec.title}</h4>
+                        <p class="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Video Lecture • 1080p</p>
+                    </div>
+                `;
+            });
+            
+            if(snap.empty) {
+                grid.innerHTML = "<p class='text-slate-500'>No lectures found. Check back later!</p>";
+            }
+        });
+
+        // Block Right Click to prevent download hacks
+        document.addEventListener('contextmenu', event => event.preventDefault());
+    </script>
+</body>
+</html>
